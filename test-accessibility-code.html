@@ -1,0 +1,83 @@
+<!-- TEST CODE FOR ACCESSIBILITY VERIFICATION -->
+<!-- This code has multiple accessibility issues for Navigator to find -->
+
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+        .btn {
+            padding: 10px 20px;
+            background: blue;
+            color: white;
+            cursor: pointer;
+        }
+
+        .hero-img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <nav>
+            <a href="/">Home</a>
+            <a href="/about">Click here</a>
+            <a href="/products">Click here for more</a>
+        </nav>
+    </header>
+
+    <main>
+        <h1>Welcome to Our Store</h1>
+
+        <!-- Issue: Image missing alt text -->
+        <img src="hero-banner.jpg" class="hero-img">
+
+        <!-- Issue: Div used as button -->
+        <div class="btn" onclick="addToCart()">Add to Cart</div>
+
+        <!-- Issue: Form inputs missing labels -->
+        <form action="/subscribe">
+            <input type="text" name="name" placeholder="Your name">
+            <input type="email" name="email" placeholder="Your email">
+            <input type="submit" value="Subscribe">
+        </form>
+
+        <!-- Issue: Another image without alt -->
+        <img src="product-1.jpg">
+
+        <h3>Our Products</h3>
+
+        <!-- Issue: Table without proper headers -->
+        <table>
+            <tr>
+                <td>Product Name</td>
+                <td>Price</td>
+                <td>Quantity</td>
+            </tr>
+            <tr>
+                <td>Widget A</td>
+                <td>$19.99</td>
+                <td>10</td>
+            </tr>
+        </table>
+
+        <!-- Issue: Link with no text -->
+        <a href="/download"><img src="download-icon.png"></a>
+
+        <!-- Issue: Low color contrast (hypothetical) -->
+        <p style="color: #999; background: #aaa;">Important notice here</p>
+        </form>
+    </main>
+
+    <footer>
+        <p>Contact us: <a href="mailto:info@store.com">here</a></p>
+    </footer>
+</body>
+
+</html>

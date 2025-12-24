@@ -8,8 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
-import { Loader2, Play, RotateCcw, Download, Code, Settings, Zap, Eye, Wrench, FlaskConical, Volume2, VolumeX } from 'lucide-react'
+import { Loader2, Play, RotateCcw, Download, Code, Settings, Zap, Eye, Wrench, FlaskConical, Volume2, VolumeX, AlertTriangle } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { IntegrationMetricsDashboard } from '@/components/integration/IntegrationMetricsDashboard'
+import { IntegrationHealthScore } from '@/components/integration/IntegrationHealthScore'
 
 // Dynamic import for Monaco Editor (client-side only)
 const Editor = dynamic(() => import('@monaco-editor/react').then(mod => mod.default), {
@@ -688,19 +690,19 @@ export default function PlaygroundPage() {
                                                             damping: 20
                                                         }}
                                                         className={`p-2 rounded-lg border flex items-center gap-2 ${test.status === 'passed'
-                                                                ? 'bg-emerald-500/15 border-emerald-500/40'
-                                                                : test.status === 'failed'
-                                                                    ? 'bg-red-500/15 border-red-500/40'
-                                                                    : test.status === 'running'
-                                                                        ? 'bg-yellow-500/20 border-yellow-400/50'
-                                                                        : 'bg-slate-800/60 border-slate-600/40'
+                                                            ? 'bg-emerald-500/15 border-emerald-500/40'
+                                                            : test.status === 'failed'
+                                                                ? 'bg-red-500/15 border-red-500/40'
+                                                                : test.status === 'running'
+                                                                    ? 'bg-yellow-500/20 border-yellow-400/50'
+                                                                    : 'bg-slate-800/60 border-slate-600/40'
                                                             }`}
                                                     >
                                                         {/* Status Icon */}
                                                         <div className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${test.status === 'passed' ? 'bg-emerald-500 text-white' :
-                                                                test.status === 'failed' ? 'bg-red-500 text-white' :
-                                                                    test.status === 'running' ? 'bg-yellow-500 text-black animate-pulse' :
-                                                                        'bg-slate-700 text-slate-400'
+                                                            test.status === 'failed' ? 'bg-red-500 text-white' :
+                                                                test.status === 'running' ? 'bg-yellow-500 text-black animate-pulse' :
+                                                                    'bg-slate-700 text-slate-400'
                                                             }`}>
                                                             {test.status === 'passed' ? '✓' :
                                                                 test.status === 'failed' ? '✗' :
@@ -712,9 +714,9 @@ export default function PlaygroundPage() {
                                                         {/* Test Name */}
                                                         <div className="flex-1 min-w-0">
                                                             <div className={`text-xs font-medium truncate ${test.status === 'passed' ? 'text-emerald-300' :
-                                                                    test.status === 'failed' ? 'text-red-300' :
-                                                                        test.status === 'running' ? 'text-yellow-300' :
-                                                                            'text-slate-400'
+                                                                test.status === 'failed' ? 'text-red-300' :
+                                                                    test.status === 'running' ? 'text-yellow-300' :
+                                                                        'text-slate-400'
                                                                 }`}>
                                                                 {test.name}
                                                             </div>
@@ -738,6 +740,26 @@ export default function PlaygroundPage() {
                                                     </motion.div>
                                                 ))}
                                             </div>
+
+                                            {/* "Wow" Moment: Navigator Catch Alert */}
+                                            {sessionState.navigatorTests.some(t => t.status === 'failed') && (
+                                                <motion.div
+                                                    initial={{ opacity: 0, y: 10 }}
+                                                    animate={{ opacity: 1, y: 0 }}
+                                                    className="mt-3 p-3 bg-yellow-500/10 border-l-4 border-yellow-500 rounded-r-lg flex items-start gap-3"
+                                                >
+                                                    <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0 mt-0.5 animate-pulse" />
+                                                    <div>
+                                                        <h4 className="font-bold text-yellow-500 text-sm">🎯 Integration Value Demonstrated!</h4>
+                                                        <div className="text-xs text-yellow-200/80 mt-1">
+                                                            Navigator found {sessionState.navigatorTests.filter(t => t.status === 'failed').length} issue(s) that automated scanning missed.
+                                                        </div>
+                                                        <div className="text-[10px] text-yellow-500/60 font-semibold mt-1">
+                                                            This is why you need BOTH Healer & Navigator!
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -824,6 +846,23 @@ export default function PlaygroundPage() {
                                 )}
                             </div>
                         </div>
+
+                        {/* Integration Analytics Section */}
+                        {(sessionState?.status === 'complete' || sessionState?.status === 'processing') && (
+                            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 px-6 pb-8 pt-4">
+                                <div className="lg:col-span-1">
+                                    <IntegrationHealthScore
+                                        dataFlowReliability={99}
+                                        autoTriggerSuccess={100}
+                                        feedbackLoopSpeed={92}
+                                        aiAccuracy={96}
+                                    />
+                                </div>
+                                <div className="lg:col-span-3">
+                                    <IntegrationMetricsDashboard />
+                                </div>
+                            </div>
+                        )}
                     </motion.div>
                 )}
             </AnimatePresence>

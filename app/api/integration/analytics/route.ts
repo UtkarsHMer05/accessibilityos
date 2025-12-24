@@ -27,7 +27,7 @@ export async function GET() {
         try {
             // @ts-ignore - accessibilityPattern may not exist in all schemas
             if (prisma.accessibilityPattern) {
-                patternsCount = await prisma.accessibilityPattern.count()
+                patternsCount = await (prisma as any).accessibilityPattern.count()
             }
         } catch {
             // Table doesn't exist, that's fine

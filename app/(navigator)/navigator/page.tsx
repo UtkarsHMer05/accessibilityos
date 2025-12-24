@@ -9,10 +9,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
     Navigation, Mic, PlayCircle, Loader2, Stethoscope, CheckCircle,
-    AlertTriangle, Eye, Keyboard, RefreshCw, Code, ArrowLeft
+    AlertTriangle, Eye, Keyboard, RefreshCw, Code, ArrowLeft, Wrench
 } from 'lucide-react'
 import { ActivityFeed } from '@/components/shared/ActivityFeed'
-import { getFixedCode, getOriginalCode, saveNavigatorIssues } from '@/lib/shared-state'
+import { getFixedCode, getOriginalCode, saveNavigatorIssues, saveFixedCode } from '@/lib/shared-state'
 
 interface VerificationStep {
     id: string
@@ -51,12 +51,7 @@ function NavigatorContent() {
     const [isLoading, setIsLoading] = useState(true)
     const narrationRef = useRef<HTMLDivElement>(null)
 
-    const [steps, setSteps] = useState<VerificationStep[]>([
-        { id: 'images', name: 'Verify Image Descriptions', description: 'Check if alt text is useful', status: 'pending' },
-        { id: 'buttons', name: 'Test Button Accessibility', description: 'Verify buttons are keyboard accessible', status: 'pending' },
-        { id: 'forms', name: 'Check Form Labels', description: 'Ensure all inputs have linked labels', status: 'pending' },
-        { id: 'flow', name: 'Complete User Flow', description: 'Attempt primary task as keyboard user', status: 'pending' }
-    ])
+    const [steps, setSteps] = useState<VerificationStep[]>([])
 
     // Load code from Healer on mount
     useEffect(() => {
@@ -98,170 +93,107 @@ function NavigatorContent() {
         setNarration([])
         setVerifiedFixes([])
         setIssuesFound([])
+        setSteps([]) // Clear previous
 
         addNarration("Starting accessibility verification. I'm Alex, your AI tester.")
-        await new Promise(r => setTimeout(r, 1500))
-
-        // Step 1: Images
-        setSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'running' } : s))
-        addNarration("Checking image descriptions...")
-
-        try {
-            const imgRes = await fetch('/api/navigator/verify-code', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    code: codeToVerify,
-                    checkType: 'images'
-                })
-            })
-            const imgData = await imgRes.json()
-
-            if (imgData.passed) {
-                addNarration(imgData.feedback || "Image alt text is descriptive and contextual.", 'success')
-                setVerifiedFixes(prev => [...prev, {
-                    element: 'img',
-                    fix: 'alt text',
-                    quality: 'excellent',
-                    feedback: imgData.feedback || 'Properly descriptive'
-                }])
-            } else {
-                addNarration(imgData.feedback || "Some images need better descriptions.", 'warning')
-                setIssuesFound(prev => [...prev, {
-                    type: 'image_alt',
-                    severity: 'medium',
-                    description: imgData.feedback || 'Image needs better alt text',
-                    element: 'img'
-                }])
-            }
-        } catch (e) {
-            addNarration("Image verification completed.", 'success')
-            setVerifiedFixes(prev => [...prev, { element: 'img', fix: 'alt text', quality: 'good', feedback: 'Verified' }])
-        }
-        setSteps(prev => prev.map((s, i) => i === 0 ? { ...s, status: 'passed' } : s))
-        setCurrentStep(1)
         await new Promise(r => setTimeout(r, 1000))
 
-        // Step 2: Buttons
-        setSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'running' } : s))
-        addNarration("Testing button accessibility with keyboard...")
+        addNarration("Analyzing your code to generate custom test scenarios...")
 
+        // 1. GENERATE TESTS
+        let currentTests: VerificationStep[] = []
         try {
-            const btnRes = await fetch('/api/navigator/verify-code', {
+            const genRes = await fetch('/api/navigator/verify-code', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    code: codeToVerify,
-                    checkType: 'buttons'
-                })
+                body: JSON.stringify({ code: codeToVerify, mode: 'generate' })
             })
-            const btnData = await btnRes.json()
+            const genData = await genRes.json()
 
-            if (btnData.passed) {
-                addNarration(btnData.feedback || "All buttons are keyboard accessible.", 'success')
-                setVerifiedFixes(prev => [...prev, {
-                    element: 'button',
-                    fix: 'semantic button',
-                    quality: 'excellent',
-                    feedback: btnData.feedback || 'Keyboard accessible'
-                }])
+            if (genData.tests) {
+                currentTests = genData.tests.map((t: any) => ({ ...t, status: 'pending' }))
+                setSteps(currentTests)
+                addNarration(`I've generated ${currentTests.length} specific test scenarios for this code.`, 'success')
             } else {
-                addNarration(btnData.feedback || "Button accessibility needs improvement.", 'warning')
-                setIssuesFound(prev => [...prev, {
-                    type: 'button_accessibility',
-                    severity: 'high',
-                    description: btnData.feedback || 'Button not properly accessible',
-                    element: 'button'
-                }])
+                throw new Error('No tests generated')
             }
         } catch (e) {
-            addNarration("Button verification completed.", 'success')
-            setVerifiedFixes(prev => [...prev, { element: 'button', fix: 'semantic', quality: 'good', feedback: 'Verified' }])
+            console.error(e)
+            addNarration("Could not generate custom tests. Falling back to standard checks.", 'warning')
+            currentTests = [
+                { id: 'structure', name: 'HTML Structure', description: 'Verify semantic structure', status: 'pending' },
+                { id: 'interactive', name: 'Interactive Elements', description: 'Check buttons and links', status: 'pending' }
+            ]
+            setSteps(currentTests)
         }
-        setSteps(prev => prev.map((s, i) => i === 1 ? { ...s, status: 'passed' } : s))
-        setCurrentStep(2)
-        await new Promise(r => setTimeout(r, 1000))
 
-        // Step 3: Forms
-        setSteps(prev => prev.map((s, i) => i === 2 ? { ...s, status: 'running' } : s))
-        addNarration("Checking form inputs and labels...")
+        // Wait for rate limit (4s)
+        await new Promise(r => setTimeout(r, 4000))
 
-        try {
-            const formRes = await fetch('/api/navigator/verify-code', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    code: codeToVerify,
-                    checkType: 'forms'
+        // 2. RUN TESTS LOOP
+        let failuresCount = 0
+        for (let i = 0; i < currentTests.length; i++) {
+            const test = currentTests[i]
+
+            // Update UI to running
+            setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'running' } : s))
+            setCurrentStep(i)
+            addNarration(`Running Test ${i + 1}: ${test.name}...`)
+
+            // Verify Call
+            try {
+                const res = await fetch('/api/navigator/verify-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        code: codeToVerify,
+                        mode: 'verify',
+                        testCase: test
+                    })
                 })
-            })
-            const formData = await formRes.json()
+                const result = await res.json()
 
-            if (formData.passed) {
-                addNarration(formData.feedback || "All inputs have properly linked labels.", 'success')
-                setVerifiedFixes(prev => [...prev, {
-                    element: 'input',
-                    fix: 'labels linked',
-                    quality: 'excellent',
-                    feedback: formData.feedback || 'Correctly associated'
-                }])
-            } else {
-                addNarration(formData.feedback || "Some form inputs need labels.", 'warning')
-                setIssuesFound(prev => [...prev, {
-                    type: 'form_labels',
-                    severity: 'medium',
-                    description: formData.feedback || 'Input missing label',
-                    element: 'input'
-                }])
+                if (result.passed) {
+                    addNarration(result.feedback || "Test passed successfully.", 'success')
+                    setVerifiedFixes(prev => [...prev, {
+                        element: result.element || 'page',
+                        fix: test.name,
+                        quality: result.quality || 'excellent',
+                        feedback: result.feedback || 'Verified'
+                    }])
+                    setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'passed' } : s))
+                } else {
+                    failuresCount++
+                    addNarration(result.feedback || "Issues found.", 'warning')
+                    setIssuesFound(prev => [...prev, {
+                        type: test.id,
+                        severity: result.severity || 'medium',
+                        description: result.feedback || 'Issue details not provided',
+                        element: result.element || 'element'
+                    }])
+                    setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'failed' } : s))
+                }
+            } catch (e) {
+                failuresCount++
+                addNarration("Verification step failed due to network error.", 'warning')
+                setSteps(prev => prev.map((s, idx) => idx === i ? { ...s, status: 'failed' } : s))
             }
-        } catch (e) {
-            addNarration("Form verification completed.", 'success')
-            setVerifiedFixes(prev => [...prev, { element: 'input', fix: 'labels', quality: 'good', feedback: 'Verified' }])
-        }
-        setSteps(prev => prev.map((s, i) => i === 2 ? { ...s, status: 'passed' } : s))
-        setCurrentStep(3)
-        await new Promise(r => setTimeout(r, 1000))
 
-        // Step 4: Keyboard Flow
-        setSteps(prev => prev.map((s, i) => i === 3 ? { ...s, status: 'running' } : s))
-        addNarration("Testing complete keyboard navigation flow...")
-
-        try {
-            const flowRes = await fetch('/api/navigator/verify-code', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    code: codeToVerify,
-                    checkType: 'keyboard_flow'
-                })
-            })
-            const flowData = await flowRes.json()
-
-            if (flowData.passed) {
-                addNarration(flowData.feedback || "Keyboard navigation flow is complete and accessible.", 'success')
-            } else {
-                addNarration(flowData.feedback || "Found issues with keyboard navigation.", 'warning')
-                setIssuesFound(prev => [...prev, {
-                    type: 'keyboard_flow',
-                    severity: 'medium',
-                    description: flowData.feedback || 'Keyboard navigation issue',
-                    element: 'focus'
-                }])
+            // Rate Limit Wait (8s) between tests, but not after the last one
+            if (i < currentTests.length - 1) {
+                await new Promise(r => setTimeout(r, 8000))
             }
-        } catch (e) {
-            addNarration("Keyboard flow verification completed.", 'success')
         }
-        setSteps(prev => prev.map((s, i) => i === 3 ? { ...s, status: 'passed' } : s))
 
         // Final Summary
-        await new Promise(r => setTimeout(r, 1500))
-        const totalIssues = issuesFound.length
-        const score = totalIssues === 0 ? 100 : Math.max(60, 100 - (totalIssues * 20))
+        await new Promise(r => setTimeout(r, 1000))
+
+        const score = failuresCount === 0 ? 100 : Math.max(60, 100 - (failuresCount * 20))
         setOverallScore(score)
 
         addNarration(
-            `Verification complete! ${verifiedFixes.length} fixes verified. ${totalIssues > 0 ? totalIssues + ' issues need attention.' : 'No new issues detected!'}`,
-            totalIssues > 0 ? 'warning' : 'success'
+            `Verification complete! ${currentTests.length - failuresCount} fixes verified. ${failuresCount > 0 ? failuresCount + ' issues need attention.' : 'No new issues detected!'}`,
+            failuresCount > 0 ? 'warning' : 'success'
         )
 
         setPhase('complete')
@@ -274,15 +206,90 @@ function NavigatorContent() {
                 body: JSON.stringify({
                     mode: 'navigator',
                     action: 'verification_completed',
-                    details: { verifiedFixes: verifiedFixes.length, issuesFound: totalIssues, score }
+                    details: { verifiedFixes: currentTests.length - failuresCount, issuesFound: failuresCount, score }
                 })
             })
         } catch (e) { console.log('Activity log failed') }
     }
 
-    // Send feedback to Healer
+    // AUTOMATED LOOP: Auto-fix with Healer and re-verify
+    const [isAutoFixing, setIsAutoFixing] = useState(false)
+    const [loopCount, setLoopCount] = useState(0)
+
+    const autoFixAndReVerify = async () => {
+        if (issuesFound.length === 0) {
+            // No issues, just go back to Healer
+            router.push('/healer')
+            return
+        }
+
+        setIsAutoFixing(true)
+        setPhase('running')
+        setNarration([])
+
+        addNarration(`🔄 Starting automated fix loop (Iteration ${loopCount + 1})...`)
+        await new Promise(r => setTimeout(r, 1000))
+
+        addNarration(`Sending ${issuesFound.length} issues to Healer AI for automatic fixing...`)
+
+        try {
+            // Call the auto-fix API
+            const response = await fetch('/api/healer/auto-fix-loop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    code: codeToVerify,
+                    issues: issuesFound.map(i => ({
+                        element: i.element,
+                        description: i.description,
+                        severity: i.severity
+                    }))
+                })
+            })
+
+            const result = await response.json()
+
+            if (result.success && result.fixedHTML) {
+                addNarration(`✅ Healer fixed ${result.issuesFixed} issues automatically!`, 'success')
+                await new Promise(r => setTimeout(r, 1500))
+
+                // Save the new fixed code
+                saveFixedCode(result.fixedHTML)
+                setCodeToVerify(result.fixedHTML)
+
+                // Increment loop counter
+                setLoopCount(prev => prev + 1)
+
+                addNarration(`🔄 Re-running Navigator verification on fixed code...`, 'info')
+                await new Promise(r => setTimeout(r, 1000))
+
+                // Reset state and restart verification
+                setIsAutoFixing(false)
+                setVerifiedFixes([])
+                setIssuesFound([])
+                setSteps([])
+
+                // Automatically restart verification with new code
+                // We call runVerification but need to use the new code
+                // Since we updated codeToVerify state, we need a slight delay for React to update
+                await new Promise(r => setTimeout(r, 500))
+                runVerification()
+
+            } else {
+                addNarration(`⚠️ Auto-fix failed: ${result.error || 'Unknown error'}`, 'warning')
+                setIsAutoFixing(false)
+                setPhase('complete')
+            }
+
+        } catch (error: any) {
+            addNarration(`❌ Auto-fix loop error: ${error.message}`, 'warning')
+            setIsAutoFixing(false)
+            setPhase('complete')
+        }
+    }
+
+    // Legacy: Send to Healer manually (for Back button)
     const sendToHealer = async () => {
-        // Save issues so Healer can process them
         if (issuesFound.length > 0) {
             saveNavigatorIssues(issuesFound.map(i => ({
                 element: i.element,
@@ -290,8 +297,6 @@ function NavigatorContent() {
                 severity: i.severity
             })))
         }
-
-        // Navigate to Healer with flag
         router.push('/healer?fromNavigator=true')
     }
 
@@ -367,12 +372,21 @@ function NavigatorContent() {
                             </div>
 
                             <div className="space-y-3 text-left max-w-sm mx-auto mb-8">
-                                {steps.map((step, i) => (
+                                {steps.length > 0 ? steps.map((step, i) => (
                                     <div key={step.id} className="flex items-center gap-3 text-sm text-slate-400">
                                         <div className="w-6 h-6 rounded-full bg-slate-800 flex items-center justify-center text-xs">{i + 1}</div>
                                         <span>{step.name}</span>
                                     </div>
-                                ))}
+                                )) : (
+                                    <div className="text-center p-4 bg-slate-900/50 rounded-lg border border-slate-800">
+                                        <div className="flex justify-center mb-2">
+                                            <Wrench className="w-5 h-5 text-purple-500/50" />
+                                        </div>
+                                        <p className="text-xs text-slate-400">
+                                            <span className="text-purple-400 font-semibold">AI Agent</span> will analyze code and generate custom test scenarios.
+                                        </p>
+                                    </div>
+                                )}
                             </div>
                             <div className="text-center">
                                 <Button
@@ -398,9 +412,9 @@ function NavigatorContent() {
                                     <motion.div
                                         key={step.id}
                                         className={`p-3 rounded-lg border ${step.status === 'running' ? 'bg-purple-500/10 border-purple-500/30' :
-                                                step.status === 'passed' ? 'bg-emerald-500/10 border-emerald-500/30' :
-                                                    step.status === 'failed' ? 'bg-red-500/10 border-red-500/30' :
-                                                        'bg-slate-800/50 border-white/5'
+                                            step.status === 'passed' ? 'bg-emerald-500/10 border-emerald-500/30' :
+                                                step.status === 'failed' ? 'bg-red-500/10 border-red-500/30' :
+                                                    'bg-slate-800/50 border-white/5'
                                             }`}
                                         animate={step.status === 'running' ? { scale: [1, 1.02, 1] } : {}}
                                         transition={{ repeat: Infinity, duration: 1 }}
@@ -431,8 +445,8 @@ function NavigatorContent() {
                                                 initial={{ opacity: 0, x: -10 }}
                                                 animate={{ opacity: 1, x: 0 }}
                                                 className={`p-2 rounded text-sm ${item.type === 'success' ? 'bg-emerald-500/10 text-emerald-300' :
-                                                        item.type === 'warning' ? 'bg-yellow-500/10 text-yellow-300' :
-                                                            'bg-white/5 text-slate-300'
+                                                    item.type === 'warning' ? 'bg-yellow-500/10 text-yellow-300' :
+                                                        'bg-white/5 text-slate-300'
                                                     }`}
                                             >
                                                 <span className="text-[10px] text-slate-500 mr-2">{item.time.toLocaleTimeString()}</span>
@@ -450,9 +464,14 @@ function NavigatorContent() {
                         <div className="p-6 space-y-6">
                             {/* Score */}
                             <div className="text-center">
+                                {loopCount > 0 && (
+                                    <Badge className="mb-4 bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                                        🔄 Auto-Fix Loop: Iteration {loopCount}
+                                    </Badge>
+                                )}
                                 <div className={`w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center border-4 ${overallScore >= 90 ? 'bg-emerald-500/20 border-emerald-500' :
-                                        overallScore >= 70 ? 'bg-yellow-500/20 border-yellow-500' :
-                                            'bg-red-500/20 border-red-500'
+                                    overallScore >= 70 ? 'bg-yellow-500/20 border-yellow-500' :
+                                        'bg-red-500/20 border-red-500'
                                     }`}>
                                     <span className="text-3xl font-bold text-white">{overallScore}</span>
                                 </div>
@@ -510,10 +529,25 @@ function NavigatorContent() {
                                 <Button variant="outline" onClick={() => { setPhase('ready'); setNarration([]); setVerifiedFixes([]); setIssuesFound([]); setSteps(prev => prev.map(s => ({ ...s, status: 'pending' }))); }}>
                                     <RefreshCw className="mr-2 h-4 w-4" /> Re-verify
                                 </Button>
-                                <Button className="bg-blue-600 hover:bg-blue-500" onClick={sendToHealer}>
-                                    <Stethoscope className="mr-2 h-4 w-4" />
-                                    {issuesFound.length > 0 ? 'Auto-Fix with Healer' : 'Back to Healer'}
-                                </Button>
+                                {issuesFound.length > 0 ? (
+                                    <Button
+                                        className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500"
+                                        onClick={autoFixAndReVerify}
+                                        disabled={isAutoFixing}
+                                    >
+                                        {isAutoFixing ? (
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <Stethoscope className="mr-2 h-4 w-4" />
+                                        )}
+                                        {isAutoFixing ? 'Auto-Fixing...' : '🔄 Auto-Fix & Re-Verify'}
+                                    </Button>
+                                ) : (
+                                    <Button className="bg-blue-600 hover:bg-blue-500" onClick={sendToHealer}>
+                                        <Stethoscope className="mr-2 h-4 w-4" />
+                                        Back to Healer
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     )}

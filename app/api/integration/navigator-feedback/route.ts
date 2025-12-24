@@ -8,7 +8,7 @@ export async function POST(req: Request) {
 
         // 1. Update the Global Pattern Memory
         // Upsert ensures we create the pattern if it's the first time seeing this issue type
-        const pattern = await db.accessibilityPattern.upsert({
+        const pattern = await (db as any).accessibilityPattern.upsert({
             where: { issueType: issueType || 'general' },
             update: {
                 successfulFixes: { increment: success ? 1 : 0 },
