@@ -1,0 +1,13 @@
+
+// ADD TO EXISTING SCHEMA
+// Pattern Library: Stores effective fixes learned from Navigator verification
+model AccessibilityPattern {
+  id              String   @id @default(cuid())
+  issueType       String   // e.g., 'trap_native_button'
+  contextHash     String   // Simplified hash of context (e.g., 'div_onclick_no_role')
+  fixTemplate     String   // The code pattern that worked
+  successRate     Float    @default(1.0)
+  verifications   Int      @default(1)
+  
+  updatedAt       DateTime @updatedAt
+}

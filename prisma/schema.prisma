@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Support for NextAuth if we add it later, but keeping simple for now
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Website {
+  id              String    @id @default(cuid())
+  url             String    @unique
+  lastScanned     DateTime?
+  healerScore     Int?      // Lighthouse score (0-100)
+  navigatorScore  Float?    // Navigator UX score (0-100)
+  combinedScore   Float?    // Weighted average
+  navigatorTested Boolean   @default(false)
+  issuesFixed     Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  issues          AccessibilityIssue[]
+}
+
+model AccessibilityIssue {
+  id            String    @id @default(cuid())
+  websiteUrl    String
+  issueType     String    // 'missing_alt', 'contrast', 'aria', etc.
+  sourceMode    String    // 'healer' | 'navigator'
+  description   String
+  codeLocation  String?   // Selector or Line number
+  severity      String    // 'critical', 'serious', 'moderate', 'minor'
+  status        String    // 'detected', 'fixing', 'fixed', 'verified'
+  detectedAt    DateTime  @default(now())
+  fixedAt       DateTime?
+
+  // Integration: Link Healer fix to Navigator verification
+  relatedIssueId String?
+  relatedIssue   AccessibilityIssue? @relation("IssueRelation", fields: [relatedIssueId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  relatedTo      AccessibilityIssue[] @relation("IssueRelation")
+  
+  website       Website   @relation(fields: [websiteUrl], references: [url])
+  fixActions    FixAction[]
+
+  @@index([websiteUrl, status])
+  @@index([sourceMode, detectedAt])
+  @@index([relatedIssueId])
+}
+
+model FixAction {
+  id                String    @id @default(cuid())
+  issueId           String
+  actionType        String    // 'auto_fix', 'manual', 'user_report'
+  appliedBy         String    // 'healer_ai', 'user'
+  beforeCode        String?
+  afterCode         String?
+  effectivenessScore Float?   // 0.0 - 1.0
+  createdAt         DateTime  @default(now())
+  
+  issue             AccessibilityIssue @relation(fields: [issueId], references: [id])
+
+  @@index([issueId])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  mode      String   // 'healer', 'navigator', 'system'
+  action    String   // 'scan', 'fix', 'verify', 'report'
+  details   Json?
+  timestamp DateTime @default(now())
+
+  @@index([timestamp])
+}

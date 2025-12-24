@@ -1,0 +1,42 @@
+<!DOCTYPE html><html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Broken Demo Site</title>
+    <style>
+        body { font-family: sans-serif; }
+        .hero { background: #eee; padding: 2rem; }
+        /* Low contrast: grey text on grey background */
+        .subtext { color: #999; background-color: #eee; }
+        /* Bad button */
+        .btn { padding: 10px; background: blue; color: white; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Welcome to Accessible Store</h1>
+    </header>
+    
+    <main>
+        <div class="hero">
+            <!-- VIOLATION 1: Missing Alt Text -->
+            <img alt="Mock accessible description" src="https://via.placeholder.com/300" class="hero-img">
+            
+            <h2>Latest Products</h2>
+            
+            <!-- VIOLATION 2: Low Contrast -->
+            <p class="subtext">Browse our amazing collection of accessibility tools.</p>
+            
+            <!-- VIOLATION 3: Button missing label/name (icon only simulated) -->
+            <button class="btn"><i class="icon-cart"></i></button>
+            <button class="btn">Buy Now</button> 
+            
+            <!-- VIOLATION 4: Empty Link -->
+            <a href="#"></a>
+            
+            <!-- VIOLATION 5: Form input missing label -->
+            <input type="text" placeholder="Search...">
+        </div>
+    </main>
+
+
+</body></html>
