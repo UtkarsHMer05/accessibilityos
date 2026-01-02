@@ -16,10 +16,10 @@ export default async function LandingPage() {
       <div className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-purple-500/5 rounded-full blur-3xl pointer-events-none"></div>
 
       <div className="relative z-10 text-center space-y-8 p-6 max-w-6xl w-full">
-        {/* Hackathon Badge */}
+        {/* Platform Badge */}
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-medium uppercase tracking-wider mb-2 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <Sparkles size={12} />
-          <span>Gemini 3 Hackathon Project</span>
+          <span>AI-Powered Accessibility Platform</span>
         </div>
 
         {/* Hero Title */}
@@ -61,7 +61,7 @@ export default async function LandingPage() {
 
         {/* Quick Links Footer */}
         <div className="flex justify-center gap-8 pt-8 mt-8 border-t border-white/5 opacity-60 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-500 text-sm font-mono text-slate-500">
-          <span>v2.0.0-hackathon-build</span>
+          <span>v2.0.0</span>
           <span className="flex items-center gap-2"><div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div> System Operational</span>
           <span>Powered by Gemini 1.5 Pro</span>
         </div>
